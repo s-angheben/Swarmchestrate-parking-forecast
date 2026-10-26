@@ -71,8 +71,8 @@ Every time sent must include its timezone, so the moment is unambiguous (`2026-0
   - `time`: when the state applies, any moment, with timezone (e.g. `2026-08-14T10:00:00+03:00`)
   - `sensors`: every sensor and its state at `time`: `id, type, latitude, longitude, oc`
     (`oc` = true if occupied; `type`, `latitude`, `longitude` may be null)
-- `messages`: the asynchronous messages of the 24 h after `state.time`, sent by the sensors at any moment
-  (not on a time grid): `id, type, latitude, longitude, ts, oc`
+- `messages`: the asynchronous messages of the 24 h after `state.time`, sent by the sensors at any moment:
+  `id, type, latitude, longitude, ts, oc`
   (`ts` = when the message was sent, unix seconds or ISO with offset; `oc` = state of the sensor from that moment;
   `type`, `latitude`, `longitude` may be null)
 
