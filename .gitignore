@@ -13,3 +13,9 @@ wheels/
 *.ipynb
 .ipynb_checkpoints/
 *.zip
+
+# data: local only, not on GitHub
+data/
+
+# model checkpoints: local only, not on GitHub
+checkpoints/

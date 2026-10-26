@@ -1,0 +1,30 @@
+[project]
+name = "swarmchestrate-parking-forecast"
+version = "0.1.0"
+description = "Parking forecasting service (events and occupancy per 15-min bin) for the Swarmchestrate simulator"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # service
+    "fastapi>=0.121.3",
+    "uvicorn>=0.38.0",
+    # model and data
+    "torch>=2.14.1",
+    "numpy==2.1.2",
+    "pandas==2.3.3",
+    "pyarrow>=26.0.0",
+    "odfpy>=1.4.1",                # reads the .ods sensor metadata
+    # Time-Series-Library
+    "datasets==4.5.0",
+    "einops==0.8.1",
+    "huggingface-hub==0.36.0",
+    "local-attention==1.11.2",
+    "matplotlib==3.10.8",
+    "patool>=4.1.0",
+    "pywavelets==1.9.0",
+    "reformer-pytorch==1.4.4",
+    "scikit-learn==1.7.2",
+    "scipy==1.16.3",
+    "sktime==0.40.1",
+    "tqdm>=4.70.1",
+]
