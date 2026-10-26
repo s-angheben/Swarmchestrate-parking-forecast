@@ -68,7 +68,8 @@ def tables(m, start, end, sensors):
 
     changes = drop_repeats(m)
     x = changes[changes.ts >= start]
-    events = pd.crosstab(x.ts.dt.floor(BIN).dt.tz_convert(TZ), x.id) if len(x) else pd.DataFrame(dtype="int64")   # crosstab fails when empty
+    slot = bins[bins.searchsorted(x.ts, side="right") - 1]                     # slot of each change (slots start at `start`)
+    events = pd.crosstab(slot, x.id.values) if len(x) else pd.DataFrame(dtype="int64")   # crosstab fails when empty
     events = events.reindex(index=bins, columns=sensors, fill_value=0)
 
     edges = bins.append(pd.DatetimeIndex([bins[-1] + BIN])).as_unit("s").asi8        # bin edges, seconds

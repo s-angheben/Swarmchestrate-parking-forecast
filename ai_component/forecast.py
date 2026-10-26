@@ -27,7 +27,7 @@ def load(model_path, device="cpu"):
 def forecast(f, messages, state, time):
     """messages: id, ts (UTC), oc of the 24 h before `time`; state: id, oc of every sensor at `time` - 24 h.
     Returns time, id, type, latitude, longitude, events, occupancy for the next 8 bins (2 h) of every sensor, sorted by time and id."""
-    t = pd.Timestamp(time).tz_convert("UTC").floor(BIN).tz_convert(TZ)  # start of the first forecast bin
+    t = pd.Timestamp(time).tz_convert(TZ)                               # start of the first forecast slot
     sensors, S = f.sensors.index, len(f.sensors)
     events, occupancy, _ = window_tables(messages, state, t, sensors)
     x = (np.concatenate([events.values, occupancy.values], axis=1).astype(np.float32) - f.mu) / f.sd   # (96, 2S), scaled

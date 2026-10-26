@@ -2,14 +2,14 @@
 
     uv run forecaster_service.py --model_path checkpoints/chania_itransformer_wide [--port 8000] [--use_gpu]
 
-Request:  {"time": "2026-08-15T10:00:00+03:00",
-           "state": [{"id": ..., "type": ..., "latitude": ..., "longitude": ..., "oc": false}, ...],
-           "messages": [{"id": ..., "type": ..., "latitude": ..., "longitude": ..., "ts": 1786777200, "oc": true}, ...]}
-          state: every sensor and its state at `time` - 24 h; messages: the messages of the 24 h before `time`
-          (ts: unix seconds or ISO; type / latitude / longitude may be null)
+Request:  {"state": {"time": "2026-08-14T10:00:00+03:00",
+                     "sensors": [{"id": ..., "type": ..., "latitude": ..., "longitude": ..., "oc": false}, ...]},
+           "messages": [{"id": ..., "type": ..., "latitude": ..., "longitude": ..., "ts": 1786690803, "oc": true}, ...]}
+          state: every sensor and its state at state.time; messages: the messages of the 24 h after state.time
+          (ts: unix seconds or ISO with offset; type / latitude / longitude may be null)
 Answer:   {"time": ...,
            "forecast": [{"time": ..., "id": ..., "type": ..., "latitude": ..., "longitude": ..., "events": 0.21, "occupancy": 0.43}, ...]}
-          next 8 bins (2 h) of every sensor, sorted by time and id
+          next 8 slots of 15 min (2 h) of every sensor from state.time + 24 h, sorted by time and id
 The itransformer_wide model uses only id, oc of `state` and id, ts, oc of `messages`: type and location of each sensor
 are stored in the checkpoint.
 """
@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "ai_component"))
 from forecast import load, forecast
 
 
-class SensorState(BaseModel):
+class Sensor(BaseModel):
     id: str
     type: str | None
     latitude: float | None
@@ -35,14 +35,18 @@ class SensorState(BaseModel):
     oc: bool
 
 
-class Message(SensorState):
+class Message(Sensor):
     ts: AwareDatetime           # unix seconds, or ISO with offset
 
 
+class State(BaseModel):
+    time: AwareDatetime         # with offset
+    sensors: list[Sensor]       # every sensor and its state at `time`
+
+
 class PredictionRequest(BaseModel):
-    time: AwareDatetime         # call time, with offset
-    state: list[SensorState]    # every sensor at time - 24 h
-    messages: list[Message]
+    state: State
+    messages: list[Message]     # the 24 h after state.time
 
 
 def create_app(model_path, device):
@@ -54,12 +58,12 @@ def create_app(model_path, device):
     def predict(r: PredictionRequest):
         m = pd.DataFrame([x.model_dump() for x in r.messages], columns=list(Message.model_fields))
         m["ts"] = pd.to_datetime(m.ts, utc=True)
-        s = pd.DataFrame([x.model_dump() for x in r.state], columns=list(SensorState.model_fields))
+        s = pd.DataFrame([x.model_dump() for x in r.state.sensors], columns=list(Sensor.model_fields))
         missing = f.sensors.index.difference(s.id)
         if len(missing):
             raise HTTPException(422, f"state missing for {len(missing)} sensors: {list(missing)}")
         with lock:                                                      # one request at a time
-            out = forecast(f, m, s, r.time)
+            out = forecast(f, m, s, r.state.time + pd.Timedelta("24h"))
         out["time"] = out.time.map(pd.Timestamp.isoformat)
         out = out.astype(object).where(out.notna(), None)              # unknown type / location: null (NaN is not JSON)
         return {"time": out.time.iloc[0], "forecast": out.to_dict("records")}

@@ -29,7 +29,7 @@ Prepared data in `data/processed/chania/`:
   (`failure_after` = true if the sensor is silent for more than 3 days after this message = sensor failure)
 - `sensors_test.parquet`: the same messages, only the test period
 - `state_test.parquet`: every sensor at the test start: `id, type, latitude, longitude, oc, failed`
-  (`oc` = state, the same as `state` in the web service request; `failed` = sensor failed at the test start)
+  (`oc` = state, the same as `state.sensors` in the web service request; `failed` = sensor failed at the test start)
 - `failures.parquet`: failure periods `id, start, end`
 - `train.parquet`, `val.parquet`, `test.parquet`: 15-min bins `time, id, type, latitude, longitude, events, occupancy, mask`
   (`mask` = 0 during a failure)
@@ -54,32 +54,41 @@ uv run ai_component/train.py --city chania
 The model and the test metrics are saved in `checkpoints/chania_itransformer_wide/`.
 
 ### Web service
+Forecasts the next 2 hours of every sensor from the last 24 hours.
+
 - Start the service:
 ```
 uv run forecaster_service.py --model_path ./checkpoints/chania_itransformer_wide --port 8000
   # --use_gpu
 ```
 
-- Request: `time` = call time, `state` = every sensor and its state (`oc`) at `time` - 24 h,
-  `messages` = all the messages of the 24 h before `time` (`ts` in unix seconds or ISO with offset; `type`, `latitude`, `longitude` may be null)
-```
-{"time": "2026-08-15T10:00:00+03:00",
- "state": [{"id": "ISLPRK1-60506-22524", "type": "accessible parking space",
-            "latitude": 35.507325, "longitude": 24.019731, "oc": false}, ...],
- "messages": [{"id": "ISLPRK1-60519-47185", "type": "accessible parking space",
-               "latitude": 35.5104, "longitude": 24.024903, "ts": 1786690803, "oc": true}, ...]}
-```
+#### API (`POST /predict`)
+**Input: the last 24 h**
+- `state`: the starting point of the 24 h
+  - `time`: when the state applies, any moment, with timezone (e.g. `2026-08-14T10:00:00+03:00`)
+  - `sensors`: every sensor and its state at `time`: `id, type, latitude, longitude, oc`
+    (`oc` = true if occupied; `type`, `latitude`, `longitude` may be null)
+- `messages`: the asynchronous messages of the 24 h after `state.time`, sent by the sensors at any moment
+  (not on a time grid): `id, type, latitude, longitude, ts, oc`
+  (`ts` = when the message was sent, unix seconds or ISO with offset; `oc` = state of the sensor from that moment;
+  `type`, `latitude`, `longitude` may be null)
 
-- Example (call at 2026-08-15 10:00, files in `data/examples/`):
-  - `state.json`: every sensor and its state at 2026-08-14 10:00 (`time` - 24 h)
-  - `messages.json`: the messages from 2026-08-14 10:00 to 2026-08-15 10:00
+**Output: the next 2 h**, from `state.time` + 24 h, for every sensor in 8 slots of 15 min, sorted by time and id: `time, id, type, latitude, longitude, events, occupancy`
+- `time`: start of the slot
+- `events`: expected number of state changes (free ↔ occupied) of the sensor in the slot; a decimal >= 0, it can be above 1
+- `occupancy`: expected fraction of the slot the spot is occupied, from 0 (free the whole slot) to 1 (occupied the whole slot)
+
+#### Example
+Forecast from 2026-08-15 10:00, files in `data/examples/`:
+- `state.json`: the `state`: time 2026-08-14 10:00 and every sensor with its state at that time
+- `messages.json`: the messages from 2026-08-14 10:00 to 2026-08-15 10:00
 ```
-printf '{"time": "2026-08-15T10:00:00+03:00", "state": %s, "messages": %s}' \
+printf '{"state": %s, "messages": %s}' \
   "$(cat data/examples/state.json)" "$(cat data/examples/messages.json)" \
   | curl -X POST "http://localhost:8000/predict" -H "Content-Type: application/json" -d @-
 ```
 
-- Answer: the next 8 bins (2 h) of every sensor, sorted by time and id
+Answer:
 ```
 {"time": "2026-08-15T10:00:00+03:00",
  "forecast": [{"time": "2026-08-15T10:00:00+03:00", "id": "ISLPRK1-60506-22524", "type": "accessible parking space",
@@ -87,14 +96,8 @@ printf '{"time": "2026-08-15T10:00:00+03:00", "state": %s, "messages": %s}' \
 ```
 
 ### Assumptions
-1. no data of faulty or failed sensors;
-2. `state` contains all the sensors (otherwise the service answers with an error).
-
-Duplicates and messages repeating the same state are fine.
-
-Known limits:
-- `type`, `latitude`, `longitude` in the request are not used yet (the model has them from training); unknown ids are ignored;
-- a failed sensor cannot be detected: without messages it looks like it keeps its state.
+- Every sensor works: a broken sensor cannot be detected, it looks like a spot that keeps its state.
+- `state.sensors` lists every sensor of the city (204 for chania); if one is missing, the service answers with an error.
 
 ### Acknowledgement
 The model builds upon [Time-Series-Library](https://github.com/thuml/Time-Series-Library).
