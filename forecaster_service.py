@@ -10,18 +10,18 @@ Request:  {"time": "2026-08-15T10:00:00+03:00",
 Answer:   {"time": ...,
            "forecast": [{"time": ..., "id": ..., "type": ..., "latitude": ..., "longitude": ..., "events": 0.21, "occupancy": 0.43}, ...]}
           next 8 bins (2 h) of every sensor, sorted by time and id
-The itransformer_wide model uses only id, ts, oc: type and location of each sensor are stored in the checkpoint.
+The itransformer_wide model uses only id, oc of `state` and id, ts, oc of `messages`: type and location of each sensor
+are stored in the checkpoint.
 """
 import argparse
 import sys
 import threading
-from datetime import datetime
 from pathlib import Path
 import pandas as pd
 import torch
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "ai_component"))
 from forecast import load, forecast
@@ -36,11 +36,11 @@ class SensorState(BaseModel):
 
 
 class Message(SensorState):
-    ts: datetime
+    ts: AwareDatetime           # unix seconds, or ISO with offset
 
 
 class PredictionRequest(BaseModel):
-    time: datetime              # call time, with offset
+    time: AwareDatetime         # call time, with offset
     state: list[SensorState]    # every sensor at time - 24 h
     messages: list[Message]
 

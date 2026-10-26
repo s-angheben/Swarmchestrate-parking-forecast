@@ -6,7 +6,7 @@ Parking forecast: from the sensor messages of the last 24 hours, it predicts the
 ### Setup
 - Clone the repo
 ```
-git clone https://github.com/<user>/Swarmchestrate-parking-forecast.git
+git clone https://github.com/s-angheben/Swarmchestrate-parking-forecast.git
 cd Swarmchestrate-parking-forecast
 ```
 
@@ -61,7 +61,7 @@ uv run forecaster_service.py --model_path ./checkpoints/chania_itransformer_wide
 ```
 
 - Request: `time` = call time, `state` = every sensor and its state (`oc`) at `time` - 24 h,
-  `messages` = all the messages of the 24 h before `time` (`ts` in unix seconds or ISO; `type`, `latitude`, `longitude` may be null)
+  `messages` = all the messages of the 24 h before `time` (`ts` in unix seconds or ISO with offset; `type`, `latitude`, `longitude` may be null)
 ```
 {"time": "2026-08-15T10:00:00+03:00",
  "state": [{"id": "ISLPRK1-60506-22524", "type": "accessible parking space",
@@ -91,6 +91,10 @@ printf '{"time": "2026-08-15T10:00:00+03:00", "state": %s, "messages": %s}' \
 2. `state` contains all the sensors (otherwise the service answers with an error).
 
 Duplicates and messages repeating the same state are fine.
+
+Known limits:
+- `type`, `latitude`, `longitude` in the request are not used yet (the model has them from training); unknown ids are ignored;
+- a failed sensor cannot be detected: without messages it looks like it keeps its state.
 
 ### Acknowledgement
 The model builds upon [Time-Series-Library](https://github.com/thuml/Time-Series-Library).
