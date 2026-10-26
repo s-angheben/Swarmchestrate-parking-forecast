@@ -7,8 +7,7 @@ Request:  {"state": {"time": "2026-08-14T10:00:00+03:00",
            "messages": [{"id": ..., "type": ..., "latitude": ..., "longitude": ..., "ts": 1786690803, "oc": true}, ...]}
           state: every sensor and its state at state.time; messages: the messages of the 24 h after state.time
           (ts: unix seconds or ISO with offset; type / latitude / longitude may be null)
-Answer:   {"time": ...,
-           "forecast": [{"time": ..., "id": ..., "type": ..., "latitude": ..., "longitude": ..., "events": 0.21, "occupancy": 0.43}, ...]}
+Answer:   {"forecast": [{"time": ..., "id": ..., "type": ..., "latitude": ..., "longitude": ..., "events": 0.21, "occupancy": 0.43}, ...]}
           next 8 slots of 15 min (2 h) of every sensor from state.time + 24 h, sorted by time and id
 The itransformer_wide model uses only id, oc of `state` and id, ts, oc of `messages`: type and location of each sensor
 are stored in the checkpoint.
@@ -66,7 +65,7 @@ def create_app(model_path, device):
             out = forecast(f, m, s, r.state.time + pd.Timedelta("24h"))
         out["time"] = out.time.map(pd.Timestamp.isoformat)
         out = out.astype(object).where(out.notna(), None)              # unknown type / location: null (NaN is not JSON)
-        return {"time": out.time.iloc[0], "forecast": out.to_dict("records")}
+        return {"forecast": out.to_dict("records")}
 
     return app
 

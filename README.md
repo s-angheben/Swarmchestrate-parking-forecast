@@ -93,8 +93,7 @@ printf '{"state": %s, "messages": %s}' \
 
 Answer:
 ```
-{"time": "2026-08-15T10:00:00+03:00",
- "forecast": [{"time": "2026-08-15T10:00:00+03:00", "id": "ISLPRK1-60506-22524", "type": "accessible parking space",
+{"forecast": [{"time": "2026-08-15T10:00:00+03:00", "id": "ISLPRK1-60506-22524", "type": "accessible parking space",
                "latitude": 35.507325, "longitude": 24.019731, "events": 0.07, "occupancy": 0.04}, ...]}
 ```
 
