@@ -43,7 +43,7 @@ Prepared data in `data/processed/chania/`:
 Only needed to rebuild the data or the model; `data_checkpoints.zip` already contains both.
 
 - Raw data in `data/raw/<city>/`: messages `id, ts, oc` (.csv) and sensor metadata (.ods)
-- Prepare the data (clean messages, failures, 15-min bins and train / val / test splits; dates = midnight, local time):
+- Prepare the data (clean messages, failures, 15-min bins and train / val / test splits; each date starts at 00:00 Greek time, Europe/Athens):
 ```
 uv run ai_component/prepare_data.py --city chania --start 2025-12-16 --val-start 2026-07-12 --test-start 2026-08-10
 ```
@@ -63,6 +63,9 @@ uv run forecaster_service.py --model_path ./checkpoints/chania_itransformer_wide
 ```
 
 #### API (`POST /predict`)
+All times are Greek time (Europe/Athens): the model learned the daily pattern of the city on the Greek clock.
+Every time sent must include its timezone, so the moment is unambiguous (`2026-08-14T10:00:00+03:00` = `2026-08-14T07:00:00Z`).
+
 **Input: the last 24 h**
 - `state`: the starting point of the 24 h
   - `time`: when the state applies, any moment, with timezone (e.g. `2026-08-14T10:00:00+03:00`)
