@@ -4,8 +4,8 @@
 
 Output:
 - sensors.parquet: cleaned messages + metadata (id, type, latitude, longitude, ts, oc, failure_after)
-- sensors_test.parquet: the same, only the test period (what the simulator replicates)
-- state_test.parquet: every sensor at the start of the test (id, type, latitude, longitude, oc, failed)
+- sensors_test.parquet / sensors_test.csv: the same, only the test period (what the simulator replicates)
+- state_test.parquet / state_test.csv: every sensor at the start of the test (id, type, latitude, longitude, oc, failed)
 - failures.parquet: failure periods (id, start, end), one row per period
 - train.parquet, val.parquet, test.parquet: 15-min bins (time, id, type, latitude, longitude, events, occupancy, mask)
 """
@@ -48,12 +48,18 @@ pd.DataFrame({"id": m.id, "start": m.ts, "end": nxt})[m.failure_after] \
 # sensors: cleaned messages + metadata + failure_after (1 -> 1 repeats kept: real messages, they count for the silence rule)
 s = m.join(meta, on="id")[["id", "type", "latitude", "longitude", "ts", "oc", "failure_after"]].sort_values(["ts", "id"])
 s.to_parquet(OUT / "sensors.parquet", index=False)
-s[s.ts >= test_start].to_parquet(OUT / "sensors_test.parquet", index=False)  # test period, until the end of the data
+sensors_test = s[s.ts >= test_start]
+sensors_test.to_parquet(OUT / "sensors_test.parquet", index=False)
+sensors_test.to_csv(OUT / "sensors_test.csv", index=False)
 
 # state at the start of the test: last message before it; failed = no data at that moment (or no message yet)
 last = s[s.ts < test_start].drop_duplicates("id", keep="last").set_index("id")
-meta.assign(oc=last.oc.reindex(sensors, fill_value=False), failed=last.failure_after.reindex(sensors, fill_value=True)) \
-    .reset_index().to_parquet(OUT / "state_test.parquet", index=False)
+state_test = meta.assign(
+    oc=last.oc.reindex(sensors, fill_value=False),
+    failed=last.failure_after.reindex(sensors, fill_value=True)
+).reset_index()
+state_test.to_parquet(OUT / "state_test.parquet", index=False)
+state_test.to_csv(OUT / "state_test.csv", index=False)
 
 # bins: events, occupancy, mask per sensor and 15-min bin (local time), long format, split by date
 events, occupancy, mask = tables(m, start, end, sensors)
