@@ -5,12 +5,12 @@ Rules:
 - silence: no message for more than 3 days = sensor failure; also before the first message
 - events = state changes per bin (a message with the same state as the previous one is not counted)
 - occupancy = fraction of the bin the spot is occupied (state carried forward from each message)
-- mask = 0 for bins fully inside a silence (no data); there events and occupancy are 0
+- mask = 0 for bins fully inside a silence (no data); used only for evaluation: there the tables are what the API sees
+  from a silent sensor (no events, last state carried forward; 0 before the first message)
 """
 import numpy as np
 import pandas as pd
 
-TZ = "Europe/Athens"
 BIN = pd.Timedelta("15min")
 # data provider: the devices communicate at least once a day,
 # so no communication for more than 3 days = sensor failure
@@ -31,8 +31,8 @@ def clean(messages, end):
 
 
 def data_end(messages):
-    """Start of the incomplete last bin = end of the last full bin."""
-    return messages.ts.max().floor(BIN).tz_convert(TZ)        # floor in UTC: same bins as local time (offsets are whole hours)
+    """Start of the incomplete last bin = end of the last full bin (UTC)."""
+    return messages.ts.max().floor(BIN)                       # floor in UTC: same bins as local time (offsets are whole hours)
 
 
 def silences(m, start, end):
@@ -81,14 +81,13 @@ def tables(m, start, end, sensors):
         j = i.clip(0)
         F = np.where(i >= 0, cum[j] + s[j] * (edges - t[j]), 0.0)                   # occupied seconds up to each edge
         occupancy[sid] = np.diff(F) / BIN.total_seconds()
-    occupancy = occupancy.where(mask == 1, 0.0)
     return events, occupancy, mask
 
 
 def window_tables(messages, state, t, sensors):
     """API call at time `t` (on a bin edge): tables of the 96 bins (24 h) before `t`.
     `state` (id, oc): state of every sensor at the start of the window (t - 24 h); `messages` (id, ts, oc): the messages
-    of the window. No failed sensor, so the mask is always 1."""
+    of the window."""
     start = t - 96 * BIN                                                # absolute 24 h: always 96 bins, also on DST days
     m = messages[(messages.ts >= start) & (messages.ts < t)][["id", "ts", "oc"]]
     init = pd.DataFrame({"id": sensors, "ts": start.tz_convert("UTC") - pd.Timedelta("1s"),

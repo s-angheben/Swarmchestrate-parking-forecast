@@ -12,8 +12,8 @@ dependencies = [
     "torch>=2.14.1",
     "numpy==2.1.2",
     "pandas==2.3.3",
-    "pyarrow>=26.0.0",
-    "odfpy>=1.4.1",                # reads the .ods sensor metadata
+    "pyarrow>=26.0.0",                # parquet files
+    "scikit-learn==1.7.2",            # k-means (cluster models)
     # Time-Series-Library
     "datasets==4.5.0",
     "einops==0.8.1",
@@ -23,7 +23,6 @@ dependencies = [
     "patool>=4.1.0",
     "pywavelets==1.9.0",
     "reformer-pytorch==1.4.4",
-    "scikit-learn==1.7.2",
     "scipy==1.16.3",
     "sktime==0.40.1",
     "tqdm>=4.70.1",

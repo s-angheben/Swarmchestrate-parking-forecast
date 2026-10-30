@@ -1,4 +1,5 @@
-"""itransformer_wide: one iTransformer over all sensors at once (events and occupancy of every sensor in, the same out).
+"""iTransformerWide: one iTransformer over many series at once: events and occupancy of every sensor (wide) or of every
+cluster (cluster models) in, the same out.
 
 Time-Series-Library iTransformer + one embedding added to every data column: sensor id + type + location + target
 (events or occupancy). Without it the 2 x S columns would have no identity (iTransformer tokens have no order).
