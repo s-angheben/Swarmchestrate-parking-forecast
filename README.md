@@ -88,12 +88,15 @@ uv run ai_component/train.py --city balanced --model behavior_cluster --k 10
 # 4. serve them
 uv run forecaster_service.py --model_path ./checkpoints --city balanced --port 8000
 ```
-No `--with_type` here: in the synthetic data `type` is the zone that generated the events (see Models).
-Another profile: the same commands with its name (e.g. `COMMERCIAL_ONLY` → `data/raw/commercial_only`, `--city commercial_only`).
-Each profile is its own dataset (its sensors are not the same as in the other profiles).
+Notes:
+- `--with_type` is optional. Without it, the models learn the zones from the behaviour; with it, they are given the zone
+  that generated the events.
+- Other profiles: the same commands with another name (e.g. `COMMERCIAL_ONLY` → `commercial_only`).
+- Train each profile on its own: every profile has different sensors.
 
-After step 2 the simulator replays `data/processed/<city>/messages_test.csv` from `state_test.csv`; at each step it writes
-the state and the messages of the last 24 h as CSV and calls the service (see API).
+Simulator:
+- It replays `data/processed/<city>/messages_test.csv`, starting from `state_test.csv`.
+- For a forecast it writes the last 24 h as CSV files and calls the service (see API).
 
 ### Models
 All: 24 h in, 2 h out, a call at every 15-min bin, iTransformer.
@@ -115,8 +118,8 @@ checkpoint `<city>_<model>_type`.
 | `behavior_cluster` | each sensor assigned from its last 24 h (48 values) | + its type one-hot (fixed per sensor): fewer cluster changes |
 
 In k-means the type one-hot is scaled to weigh as much as the events (24 values); the type of each sensor comes from the
-checkpoint. Synthetic data: `type` is the zone (COMMERCIAL, LOADING, RESIDENTIAL) that generated the events, so a model with
-type is given the answer; do not use `--with_type` there for a fair comparison.
+checkpoint. Synthetic data: `type` is the zone (COMMERCIAL, LOADING, RESIDENTIAL) that generated the events. Without `--with_type`
+the models learn the zones from the behaviour; with it, they are given them.
 
 `metrics.csv`: MAE and RMSE per sensor and for
 the city average, on `all` data and on `working` sensors only.
